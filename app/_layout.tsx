@@ -1,45 +1,44 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { AppProvider } from '../contexts/AppContext';
-import { Colors } from '../constants/theme';
+import { AppProvider, useApp } from '../contexts/AppContext';
+import { getThemeColors } from '../constants/theme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
+
+function AppContent() {
+  const { state } = useApp();
+  const c = getThemeColors(state.settings.darkTheme);
+
+  return (
+    <>
+      <StatusBar style={state.settings.darkTheme ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: c.background },
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="goals" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
+        <Stack.Screen name="profile" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
+        <Stack.Screen name="calendar" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
+        <Stack.Screen name="schedule" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
+      </Stack>
+    </>
+  );
+}
 
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <AppProvider>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: Colors.background },
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen
-            name="goals"
-            options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
-          />
-          <Stack.Screen
-            name="profile"
-            options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
-          />
-          <Stack.Screen
-            name="calendar"
-            options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
-          />
-          <Stack.Screen
-            name="schedule"
-            options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
-          />
-        </Stack>
+        <AppContent />
       </AppProvider>
     </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.background },
+  root: { flex: 1 },
 });

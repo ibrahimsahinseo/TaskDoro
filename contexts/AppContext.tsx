@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getThemeColors, ThemeColors } from '../constants/theme';
+import { getTranslations, Language, Translations } from '../constants/i18n';
 
 export interface Task {
   id: string;
@@ -55,6 +57,7 @@ export interface AppState {
     backgroundTheme: string;
     ambientSound: string | null;
     ambientVolume: number;
+    language: Language;
   };
   tasks: Task[];
   goals: Goal[];
@@ -108,6 +111,7 @@ const initialState: AppState = {
     backgroundTheme: 'default',
     ambientSound: null,
     ambientVolume: 0.5,
+    language: 'en',
   },
   tasks: [
     {
@@ -289,7 +293,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
-          dispatch({ type: 'SET_STATE', payload: { ...initialState, ...parsed } });
+          dispatch({
+            type: 'SET_STATE',
+            payload: {
+              ...initialState,
+              ...parsed,
+              settings: { ...initialState.settings, ...parsed.settings },
+            },
+          });
         }
       } catch {}
     })();
@@ -311,6 +322,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
 export function useApp() {
   return useContext(AppContext);
+}
+
+export function useThemeColors(): ThemeColors {
+  const { state } = useContext(AppContext);
+  return useMemo(() => getThemeColors(state.settings.darkTheme), [state.settings.darkTheme]);
+}
+
+export function useTranslation(): Translations {
+  const { state } = useContext(AppContext);
+  return useMemo(() => getTranslations(state.settings.language), [state.settings.language]);
 }
 
 export { initialState };
