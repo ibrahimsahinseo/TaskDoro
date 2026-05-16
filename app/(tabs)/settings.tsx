@@ -99,6 +99,22 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            <View style={[styles.divider, { backgroundColor: c.outlineVariant }]} />
+            <View style={styles.cycleRow}>
+              <View style={styles.cycleTextBlock}>
+                <Text style={[styles.preferenceTitle, { color: c.onSurface }]}>{t.dailyTargetSetting}</Text>
+                <Text style={[styles.preferenceSubtitle, { color: c.onSurfaceVariant }]}>{t.dailyTargetDesc}</Text>
+              </View>
+              <View style={styles.stepper}>
+                <TouchableOpacity onPress={() => dispatch({ type: 'UPDATE_TIMER', payload: { dailyTarget: Math.max(1, state.timer.dailyTarget - 1) } })} style={[styles.stepperButton, { backgroundColor: c.surfaceContainerHighest }, state.timer.dailyTarget <= 1 && { opacity: 0.3 }]} activeOpacity={0.6} disabled={state.timer.dailyTarget <= 1}>
+                  <Text style={[styles.stepperButtonText, { color: c.onSurface }]}>-</Text>
+                </TouchableOpacity>
+                <Text style={[styles.stepperValue, { color: c.tertiary }]}>{state.timer.dailyTarget}</Text>
+                <TouchableOpacity onPress={() => dispatch({ type: 'UPDATE_TIMER', payload: { dailyTarget: Math.min(20, state.timer.dailyTarget + 1) } })} style={[styles.stepperButton, { backgroundColor: c.surfaceContainerHighest }, state.timer.dailyTarget >= 20 && { opacity: 0.3 }]} activeOpacity={0.6} disabled={state.timer.dailyTarget >= 20}>
+                  <Text style={[styles.stepperButtonText, { color: c.onSurface }]}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </Animated.View>
 

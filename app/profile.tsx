@@ -3,25 +3,47 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, Dimensions
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useApp, useThemeColors, useTranslation } from '../contexts/AppContext';
+import { useApp, useThemeColors, useTranslation, xpForNextLevel } from '../contexts/AppContext';
 import { Spacing, BorderRadius } from '../constants/theme';
 
 const { width } = Dimensions.get('window');
 
+const ACHIEVEMENT_DEFS: Record<string, { icon: string; labelKey: string; descKey: string }> = {
+  first_session: { icon: '🎯', labelKey: 'achFirstSession', descKey: 'achFirstSessionDesc' },
+  ten_sessions: { icon: '⭐', labelKey: 'achTenSessions', descKey: 'achTenSessionsDesc' },
+  fifty_sessions: { icon: '💎', labelKey: 'achFiftySessions', descKey: 'achFiftySessionsDesc' },
+  hundred_sessions: { icon: '👑', labelKey: 'achHundredSessions', descKey: 'achHundredSessionsDesc' },
+  one_hour: { icon: '⏰', labelKey: 'achOneHour', descKey: 'achOneHourDesc' },
+  five_hours: { icon: '🏃', labelKey: 'achFiveHours', descKey: 'achFiveHoursDesc' },
+  week_streak: { icon: '🗓', labelKey: 'achWeekStreak', descKey: 'achWeekStreakDesc' },
+  month_streak: { icon: '📅', labelKey: 'achMonthStreak', descKey: 'achMonthStreakDesc' },
+  early_bird: { icon: '🐦', labelKey: 'achEarlyBird', descKey: 'achEarlyBirdDesc' },
+  night_owl: { icon: '🦉', labelKey: 'achNightOwlAch', descKey: 'achNightOwlDesc' },
+  task_master: { icon: '✅', labelKey: 'achTaskMaster', descKey: 'achTaskMasterDesc' },
+  goal_getter: { icon: '🏆', labelKey: 'achGoalGetter', descKey: 'achGoalGetterDesc' },
+  perfect_day: { icon: '💯', labelKey: 'achPerfectDay', descKey: 'achPerfectDayDesc' },
+  level_10: { icon: '🌟', labelKey: 'achLevel10', descKey: 'achLevel10Desc' },
+};
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const c = useThemeColors();
   const t = useTranslation();
   const { profile } = state;
   const totalHours = Math.floor(profile.totalFocusMinutes / 60);
 
-  const achievementData: Record<string, { icon: string; label: string; color: string }> = {
-    fast_starter: { icon: '⚡', label: t.fastStarter, color: c.primary },
-    '10k_minutes': { icon: '🏆', label: t.tenKMinutes, color: c.tertiary },
-    night_owl: { icon: '🌙', label: t.nightOwl, color: c.secondary },
-  };
+  const xpCurrent = profile.xp;
+  const xpPrev = (profile.level - 1) * (profile.level - 1) * 50;
+  const xpNext = xpForNextLevel(profile.level);
+  const xpProgress = xpNext > xpPrev ? (xpCurrent - xpPrev) / (xpNext - xpPrev) : 0;
+
+  const dailyProgress = state.timer.todayPomodoros / state.timer.dailyTarget;
+  const canClaimReward = dailyProgress >= 1 && !profile.dailyRewardClaimed;
+
+  const allAchievementIds = Object.keys(ACHIEVEMENT_DEFS);
+  const unlockedSet = new Set(profile.achievements);
 
   return (
     <View style={[styles.container, { backgroundColor: c.background, paddingTop: insets.top }]}>
@@ -32,15 +54,26 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Profile Card */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={[styles.profileCard, { backgroundColor: c.surfaceContainerLow, borderColor: c.outlineVariant + '20' }]}>
           <View style={[styles.avatarPlaceholder, { backgroundColor: c.primaryContainer, borderColor: c.primary }]}>
             <Text style={[styles.avatarText, { color: c.onPrimaryContainer }]}>{profile.name.split(' ').map((n) => n[0]).join('')}</Text>
           </View>
           <Text style={[styles.profileName, { color: c.onSurface }]}>{profile.name}</Text>
-          <View style={[styles.proBadge, { backgroundColor: `${c.tertiaryContainer}20`, borderColor: `${c.tertiary}30` }]}>
-            <Text style={[styles.proBadgeText, { color: c.tertiary }]}>✓ {t.deepPro}</Text>
-          </View>
           <Text style={[styles.profileTitle2, { color: c.onSurfaceVariant }]}>{profile.title}</Text>
+
+          {/* Level & XP */}
+          <View style={[styles.levelCard, { backgroundColor: `${c.primary}15` }]}>
+            <View style={styles.levelRow}>
+              <Text style={[styles.levelLabel, { color: c.primary }]}>{t.level} {profile.level}</Text>
+              <Text style={[styles.xpLabel, { color: c.onSurfaceVariant }]}>{xpCurrent} {t.xpLabel}</Text>
+            </View>
+            <View style={[styles.xpBar, { backgroundColor: c.surfaceContainerHighest }]}>
+              <View style={[styles.xpBarFill, { width: `${Math.min(xpProgress * 100, 100)}%`, backgroundColor: c.primary }]} />
+            </View>
+            <Text style={[styles.xpToNext, { color: c.onSurfaceVariant }]}>{t.xpToNext.replace('{xp}', String(xpNext - xpCurrent))}</Text>
+          </View>
+
           <View style={styles.profileActions}>
             <TouchableOpacity style={[styles.editButton, { backgroundColor: c.surfaceContainerHigh }]} onPress={() => Alert.alert(t.editProfile)}>
               <Text style={[styles.editButtonText, { color: c.onSurface }]}>✏ {t.editProfile}</Text>
@@ -51,6 +84,35 @@ export default function ProfileScreen() {
           </View>
         </Animated.View>
 
+        {/* Daily Goal & Streak */}
+        <Animated.View entering={FadeInDown.delay(150).springify()} style={[styles.streakCard, { backgroundColor: c.surfaceContainerLow, borderColor: c.outlineVariant + '20' }]}>
+          <View style={styles.streakHeader}>
+            <Text style={{ fontSize: 32 }}>🔥</Text>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.streakTitle, { color: c.onSurface }]}>{t.dayStreak.replace('{count}', String(profile.currentStreak))}</Text>
+              <Text style={[styles.streakSub, { color: c.onSurfaceVariant }]}>{profile.currentStreak >= 7 ? t.streakFire : t.streakKeepGoing}</Text>
+            </View>
+          </View>
+          <View style={styles.dailyGoalRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.dailyGoalLabel, { color: c.onSurfaceVariant }]}>{t.dailyGoal}: {state.timer.todayPomodoros}/{state.timer.dailyTarget}</Text>
+              <View style={[styles.dailyBar, { backgroundColor: c.surfaceContainerHighest }]}>
+                <View style={[styles.dailyBarFill, { width: `${Math.min(dailyProgress * 100, 100)}%`, backgroundColor: dailyProgress >= 1 ? c.mint : c.primary }]} />
+              </View>
+            </View>
+            {canClaimReward ? (
+              <TouchableOpacity style={[styles.claimBtn, { backgroundColor: c.tertiary }]} onPress={() => dispatch({ type: 'CLAIM_DAILY_REWARD' })}>
+                <Text style={[styles.claimBtnText, { color: c.onTertiary }]}>🎁 {t.claimReward}</Text>
+              </TouchableOpacity>
+            ) : profile.dailyRewardClaimed ? (
+              <View style={[styles.claimedBadge, { backgroundColor: `${c.mint}20` }]}>
+                <Text style={[styles.claimedText, { color: c.mint }]}>✓ {t.rewardClaimed}</Text>
+              </View>
+            ) : null}
+          </View>
+        </Animated.View>
+
+        {/* Stats Grid */}
         <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsGrid}>
           <View style={[styles.statCard, { flex: 2, backgroundColor: c.surfaceContainerLow, borderColor: c.outlineVariant + '20' }]}>
             <View style={styles.statHeader}><Text style={[styles.statIcon, { color: c.primary }]}>⏱</Text><Text style={[styles.statLabel, { color: c.onSurfaceVariant }]}>{t.totalFocus}</Text></View>
@@ -61,51 +123,34 @@ export default function ProfileScreen() {
             <Text style={[styles.statValue, { color: c.onSurface }]}>{profile.currentStreak} <Text style={[styles.statUnit, { color: c.onSurfaceVariant }]}>{t.days}</Text></Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: c.surfaceContainerLow, borderColor: c.outlineVariant + '20' }]}>
-            <View style={styles.statHeader}><Text style={[styles.statIcon, { color: c.secondary }]}>🏅</Text><Text style={[styles.statLabel, { color: c.onSurfaceVariant }]}>{t.rank}</Text></View>
-            <Text style={[styles.statValue, { color: c.onSurface }]}>{t.top5}</Text>
+            <View style={styles.statHeader}><Text style={[styles.statIcon, { color: c.secondary }]}>📊</Text><Text style={[styles.statLabel, { color: c.onSurfaceVariant }]}>SESSIONS</Text></View>
+            <Text style={[styles.statValue, { color: c.onSurface }]}>{profile.totalSessions}</Text>
           </View>
         </Animated.View>
 
+        {/* Achievements */}
         <Animated.View entering={FadeInDown.delay(300).springify()} style={[styles.achievementsCard, { backgroundColor: c.surfaceContainerLow, borderColor: c.outlineVariant + '20' }]}>
-          <Text style={[styles.sectionTitle, { color: c.onSurface }]}>🏆 {t.achievements}</Text>
+          <Text style={[styles.sectionTitle, { color: c.onSurface }]}>🏆 {t.achievements} ({profile.achievements.length}/{allAchievementIds.length})</Text>
           <View style={styles.achievementsGrid}>
-            {profile.achievements.map((key) => {
-              const ach = achievementData[key];
-              if (!ach) return null;
+            {allAchievementIds.map((achId) => {
+              const def = ACHIEVEMENT_DEFS[achId];
+              const unlocked = unlockedSet.has(achId);
+              const label = (t as any)[def.labelKey] || def.labelKey;
+              const desc = (t as any)[def.descKey] || def.descKey;
               return (
-                <View key={key} style={[styles.achievementItem, { backgroundColor: c.surfaceContainer, borderColor: c.outlineVariant + '20' }]}>
-                  <View style={[styles.achievementIcon, { backgroundColor: `${ach.color}20` }]}><Text style={{ fontSize: 24 }}>{ach.icon}</Text></View>
-                  <Text style={[styles.achievementLabel, { color: c.onSurfaceVariant }]}>{ach.label}</Text>
-                </View>
+                <TouchableOpacity key={achId} style={[styles.achievementItem, { backgroundColor: c.surfaceContainer, borderColor: c.outlineVariant + '20' }, !unlocked && { opacity: 0.4 }]} onPress={() => Alert.alert(label, desc)}>
+                  <View style={[styles.achievementIcon, { backgroundColor: unlocked ? `${c.tertiary}20` : c.surfaceVariant }]}>
+                    <Text style={{ fontSize: 22 }}>{unlocked ? def.icon : '🔒'}</Text>
+                  </View>
+                  <Text style={[styles.achievementLabel, { color: c.onSurfaceVariant }]} numberOfLines={1}>{label}</Text>
+                </TouchableOpacity>
               );
             })}
-            {[1, 2].map((i) => (
-              <View key={`locked-${i}`} style={[styles.achievementItem, { backgroundColor: c.surfaceContainer, borderColor: c.outlineVariant + '20', opacity: 0.4 }]}>
-                <View style={[styles.achievementIcon, { backgroundColor: c.surfaceVariant }]}><Text style={{ fontSize: 24 }}>🔒</Text></View>
-                <Text style={[styles.achievementLabel, { color: c.onSurfaceVariant }]}>{t.locked}</Text>
-              </View>
-            ))}
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(400).springify()} style={[styles.activityCard, { backgroundColor: c.surfaceContainerLow, borderColor: c.outlineVariant + '20' }]}>
-          <Text style={[styles.sectionTitle, { color: c.onSurface }]}>📋 {t.recentActivity}</Text>
-          {[
-            { icon: '💻', title: t.deepWorkApi, time: t.todayTime, dur: '+120m', color: c.primary },
-            { icon: '📖', title: t.readingSystem, time: t.yesterdayTime, dur: '+45m', color: c.tertiary },
-          ].map((item, i) => (
-            <View key={i} style={[styles.activityItem, { backgroundColor: c.surfaceContainer, borderColor: c.outlineVariant + '20' }]}>
-              <View style={[styles.activityIcon, { backgroundColor: `${item.color}15` }]}><Text style={{ fontSize: 14 }}>{item.icon}</Text></View>
-              <View style={styles.activityInfo}>
-                <Text style={[styles.activityTitle, { color: c.onSurface }]}>{item.title}</Text>
-                <Text style={[styles.activityTime, { color: c.onSurfaceVariant }]}>{item.time}</Text>
-              </View>
-              <Text style={[styles.activityDuration, { color: item.color }]}>{item.dur}</Text>
-            </View>
-          ))}
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(500).springify()} style={[styles.accountCard, { backgroundColor: c.surfaceContainerLow, borderColor: c.outlineVariant + '20' }]}>
+        {/* Account */}
+        <Animated.View entering={FadeInDown.delay(400).springify()} style={[styles.accountCard, { backgroundColor: c.surfaceContainerLow, borderColor: c.outlineVariant + '20' }]}>
           <Text style={[styles.sectionTitleSmall, { color: c.onSurface }]}>{t.account}</Text>
           {[
             { icon: '⚙', label: t.preferencesLabel },
@@ -137,39 +182,49 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { padding: Spacing.safeMargin, paddingBottom: 40 },
   profileCard: { borderRadius: BorderRadius.xl, padding: Spacing.md, borderWidth: 1, alignItems: 'center', marginBottom: Spacing.md },
-  avatarPlaceholder: { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 3, marginBottom: 16 },
-  avatarText: { fontSize: 32, fontWeight: '700' },
-  profileName: { fontSize: 28, fontWeight: '700', marginBottom: 8 },
-  proBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 4, borderRadius: BorderRadius.full, borderWidth: 1, marginBottom: 8 },
-  proBadgeText: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  profileTitle2: { fontSize: 14, textAlign: 'center', marginBottom: 16 },
+  avatarPlaceholder: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 3, marginBottom: 12 },
+  avatarText: { fontSize: 28, fontWeight: '700' },
+  profileName: { fontSize: 24, fontWeight: '700', marginBottom: 4 },
+  profileTitle2: { fontSize: 13, textAlign: 'center', marginBottom: 12 },
+  levelCard: { width: '100%', borderRadius: 12, padding: 12, marginBottom: 12 },
+  levelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  levelLabel: { fontSize: 16, fontWeight: '700' },
+  xpLabel: { fontSize: 13, fontWeight: '600' },
+  xpBar: { height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 4 },
+  xpBarFill: { height: '100%', borderRadius: 4 },
+  xpToNext: { fontSize: 11, textAlign: 'right' },
   profileActions: { flexDirection: 'row', gap: 12, width: '100%' },
   editButton: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   editButtonText: { fontSize: 12, fontWeight: '600', letterSpacing: 1 },
   shareButton: { flex: 1, borderWidth: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   shareButtonText: { fontSize: 12, fontWeight: '600', letterSpacing: 1 },
+  streakCard: { borderRadius: BorderRadius.xl, padding: Spacing.md, borderWidth: 1, marginBottom: Spacing.md },
+  streakHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  streakTitle: { fontSize: 20, fontWeight: '700' },
+  streakSub: { fontSize: 13, marginTop: 2 },
+  dailyGoalRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  dailyGoalLabel: { fontSize: 12, fontWeight: '600', marginBottom: 6 },
+  dailyBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  dailyBarFill: { height: '100%', borderRadius: 4 },
+  claimBtn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: BorderRadius.full },
+  claimBtnText: { fontSize: 12, fontWeight: '700' },
+  claimedBadge: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: BorderRadius.full },
+  claimedText: { fontSize: 12, fontWeight: '700' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: Spacing.md },
   statCard: { flex: 1, minWidth: (width - 64) / 3, borderRadius: BorderRadius.xl, padding: 16, borderWidth: 1 },
   statHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   statIcon: { fontSize: 16 },
   statLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 1 },
-  statValueLarge: { fontSize: 42, fontWeight: '700' },
-  statValue: { fontSize: 22, fontWeight: '700' },
-  statUnit: { fontSize: 16, fontWeight: '400' },
+  statValueLarge: { fontSize: 36, fontWeight: '700' },
+  statValue: { fontSize: 20, fontWeight: '700' },
+  statUnit: { fontSize: 14, fontWeight: '400' },
   achievementsCard: { borderRadius: BorderRadius.xl, padding: Spacing.md, borderWidth: 1, marginBottom: Spacing.md },
-  sectionTitle: { fontSize: 20, fontWeight: '700', marginBottom: 16 },
-  sectionTitleSmall: { fontSize: 20, fontWeight: '700', marginBottom: 12 },
-  achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  achievementItem: { alignItems: 'center', width: (width - 100) / 4, padding: 8, borderRadius: 12, borderWidth: 1 },
-  achievementIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  achievementLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0.5, textAlign: 'center' },
-  activityCard: { borderRadius: BorderRadius.xl, padding: Spacing.md, borderWidth: 1, marginBottom: Spacing.md },
-  activityItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 10 },
-  activityIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  activityInfo: { flex: 1 },
-  activityTitle: { fontSize: 15, fontWeight: '500' },
-  activityTime: { fontSize: 10, fontWeight: '600', letterSpacing: 0.5, marginTop: 2 },
-  activityDuration: { fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 16 },
+  sectionTitleSmall: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
+  achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  achievementItem: { alignItems: 'center', width: (width - 80) / 4, padding: 8, borderRadius: 12, borderWidth: 1 },
+  achievementIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  achievementLabel: { fontSize: 9, fontWeight: '600', letterSpacing: 0.3, textAlign: 'center' },
   accountCard: { borderRadius: BorderRadius.xl, padding: Spacing.md, borderWidth: 1 },
   accountItem: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12, marginBottom: 8 },
   accountIcon: { fontSize: 18 },
