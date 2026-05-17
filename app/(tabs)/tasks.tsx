@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Dimensions, Modal, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeOutRight, Layout } from 'react-native-reanimated';
+import * as Notifications from 'expo-notifications';
 import { useApp, useThemeColors, useTranslation, Task } from '../../contexts/AppContext';
 import { Spacing, BorderRadius } from '../../constants/theme';
 
@@ -84,6 +85,21 @@ export default function TasksScreen() {
     setShowAddModal(true);
   };
 
+  const scheduleTaskReminder = useCallback((title: string, dueDate: string, dueTime?: string) => {
+    try {
+      const [year, month, day] = dueDate.split('-').map(Number);
+      const [hours, mins] = dueTime ? dueTime.split(':').map(Number) : [9, 0];
+      const triggerDate = new Date(year, month - 1, day, hours, mins);
+      const reminderDate = new Date(triggerDate.getTime() - 30 * 60 * 1000);
+      if (reminderDate > new Date()) {
+        Notifications.scheduleNotificationAsync({
+          content: { title: '📋 ' + title, body: `Due at ${dueTime || '09:00'}`, sound: 'default' },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: reminderDate },
+        }).catch(() => {});
+      }
+    } catch {}
+  }, []);
+
   const handleSaveTask = () => {
     if (!formTitle.trim()) return;
     const poms = parseInt(formPomodoros) || 2;
@@ -92,6 +108,7 @@ export default function TasksScreen() {
     } else {
       dispatch({ type: 'ADD_TASK', payload: { id: Date.now().toString(), title: formTitle.trim(), completed: false, priority: formPriority, pomodorosTarget: poms, pomodorosCompleted: 0, createdAt: new Date().toISOString(), category: formCategory, color: formColor, dueDate: formDueDate || undefined, dueTime: formDueTime || undefined, estimatedMinutes: poms * state.settings.focusDuration, tags: [formCategory], notes: formNotes || undefined } });
     }
+    if (formDueDate) scheduleTaskReminder(formTitle.trim(), formDueDate, formDueTime || undefined);
     setShowAddModal(false);
   };
 

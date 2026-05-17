@@ -5,7 +5,12 @@ import { useRouter } from 'expo-router';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence, Easing, FadeIn, FadeOut, FadeInDown } from 'react-native-reanimated';
 import { Svg, Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
+import * as Notifications from 'expo-notifications';
 import { useApp, useThemeColors, useTranslation, xpForNextLevel } from '../../contexts/AppContext';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false }),
+});
 import { Spacing, BorderRadius } from '../../constants/theme';
 import AmbientSoundPlayer from '../../components/AmbientSoundPlayer';
 import BackgroundThemeSelector from '../../components/BackgroundThemeSelector';
@@ -147,6 +152,14 @@ export default function TimerScreen() {
 
   const handleSessionComplete = useCallback((completedMode: TimerMode) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Notifications.scheduleNotificationAsync({
+      content: {
+        title: completedMode === 'focus' ? '🎯 ' + t.sessionComplete : '☕ ' + t.takeABreak,
+        body: completedMode === 'focus' ? t.greatWork : t.focusTime,
+        sound: state.settings.soundEnabled ? 'default' : undefined,
+      },
+      trigger: null,
+    }).catch(() => {});
     if (completedMode === 'focus') {
       setElapsedOnPause(getTotalTime(completedMode));
       setSaveModalType('complete');

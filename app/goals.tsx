@@ -6,7 +6,8 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useApp, useThemeColors, useTranslation, Goal } from '../contexts/AppContext';
 import { Spacing, BorderRadius } from '../constants/theme';
 
-const goalIcons: Record<string, string> = { code: '</> ', menu_book: '📖', fitness_center: '💪', brush: '🎨', school: '🎓', work: '💼' };
+const goalIcons: Record<string, string> = { code: '💻', menu_book: '📖', fitness_center: '💪', brush: '🎨', school: '🎓', work: '💼', music: '🎵', health: '🏃', language: '🌍', finance: '💰' };
+const ICON_OPTIONS = ['code', 'menu_book', 'fitness_center', 'brush', 'school', 'work', 'music', 'health', 'language', 'finance'];
 
 export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
@@ -18,6 +19,7 @@ export default function GoalsScreen() {
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalTarget, setNewGoalTarget] = useState('');
   const [newGoalMilestones, setNewGoalMilestones] = useState('5');
+  const [newGoalIcon, setNewGoalIcon] = useState('code');
 
   const colorMap: Record<string, string> = { primary: c.primary, tertiary: c.tertiary, secondary: c.secondary };
   const dailyProgress = state.timer.todayPomodoros / state.timer.dailyTarget;
@@ -25,15 +27,24 @@ export default function GoalsScreen() {
 
   const handleAddGoal = () => {
     if (!newGoalTitle.trim()) return;
-    dispatch({ type: 'ADD_GOAL', payload: { id: Date.now().toString(), title: newGoalTitle.trim(), icon: 'code', target: newGoalTarget.trim() || 'No deadline', milestonesTotal: parseInt(newGoalMilestones) || 5, milestonesCompleted: 0, status: 'in_progress', color: ['primary', 'tertiary', 'secondary'][state.goals.length % 3] as Goal['color'] } });
-    setNewGoalTitle(''); setNewGoalTarget(''); setNewGoalMilestones('5'); setShowAddModal(false);
+    dispatch({ type: 'ADD_GOAL', payload: { id: Date.now().toString(), title: newGoalTitle.trim(), icon: newGoalIcon, target: newGoalTarget.trim() || 'No deadline', milestonesTotal: parseInt(newGoalMilestones) || 5, milestonesCompleted: 0, status: 'in_progress', color: ['primary', 'tertiary', 'secondary'][state.goals.length % 3] as Goal['color'] } });
+    setNewGoalTitle(''); setNewGoalTarget(''); setNewGoalMilestones('5'); setNewGoalIcon('code'); setShowAddModal(false);
+  };
+
+  const handleDeleteGoal = (id: string) => {
+    dispatch({ type: 'DELETE_GOAL', payload: id });
   };
 
   const incrementMilestone = (goalId: string) => {
     const goal = state.goals.find((g) => g.id === goalId);
     if (!goal || goal.milestonesCompleted >= goal.milestonesTotal) return;
     const nc = goal.milestonesCompleted + 1;
-    dispatch({ type: 'UPDATE_GOAL', payload: { id: goalId, updates: { milestonesCompleted: nc, status: nc === goal.milestonesTotal ? 'completed' : goal.status } } });
+    const isCompleted = nc === goal.milestonesTotal;
+    dispatch({ type: 'UPDATE_GOAL', payload: { id: goalId, updates: { milestonesCompleted: nc, status: isCompleted ? 'completed' : goal.status } } });
+    if (isCompleted) {
+      dispatch({ type: 'UNLOCK_ACHIEVEMENT', payload: 'goal_getter' });
+      dispatch({ type: 'ADD_XP', payload: 100 });
+    }
   };
 
   const statusText = (s: string) => s === 'completed' ? t.completed : s === 'on_track' ? t.onTrack : t.inProgress;
@@ -97,13 +108,18 @@ export default function GoalsScreen() {
                     <View style={[styles.goalIconContainer, { backgroundColor: `${colorMap[goal.color]}20` }]}>
                       <Text style={{ fontSize: 20 }}>{goalIcons[goal.icon] || '🎯'}</Text>
                     </View>
-                    <View>
+                    <View style={{ flex: 1 }}>
                       <Text style={[styles.goalTitle, { color: c.onSurface }]}>{goal.title}</Text>
                       <Text style={[styles.goalTarget, { color: c.onSurfaceVariant }]}>{t.target} {goal.target}</Text>
                     </View>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: c.surfaceContainerHighest }]}>
-                    <Text style={[styles.statusText, { color: colorMap[goal.color] }]}>{statusText(goal.status)}</Text>
+                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                    <View style={[styles.statusBadge, { backgroundColor: c.surfaceContainerHighest }]}>
+                      <Text style={[styles.statusText, { color: colorMap[goal.color] }]}>{statusText(goal.status)}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => handleDeleteGoal(goal.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Text style={{ color: c.onSurfaceVariant, fontSize: 12 }}>✕</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
                 <View style={styles.milestonesContainer}>
@@ -135,6 +151,13 @@ export default function GoalsScreen() {
             <TextInput style={[styles.modalInput, { backgroundColor: c.surfaceContainer, color: c.onSurface, borderColor: c.outlineVariant + '20' }]} placeholder={t.goalTitlePlaceholder} placeholderTextColor={`${c.onSurfaceVariant}80`} value={newGoalTitle} onChangeText={setNewGoalTitle} />
             <TextInput style={[styles.modalInput, { backgroundColor: c.surfaceContainer, color: c.onSurface, borderColor: c.outlineVariant + '20' }]} placeholder={t.targetDatePlaceholder} placeholderTextColor={`${c.onSurfaceVariant}80`} value={newGoalTarget} onChangeText={setNewGoalTarget} />
             <TextInput style={[styles.modalInput, { backgroundColor: c.surfaceContainer, color: c.onSurface, borderColor: c.outlineVariant + '20' }]} placeholder={t.milestonesPlaceholder} placeholderTextColor={`${c.onSurfaceVariant}80`} value={newGoalMilestones} onChangeText={setNewGoalMilestones} keyboardType="numeric" />
+            <View style={styles.iconPickerRow}>
+              {ICON_OPTIONS.map((icon) => (
+                <TouchableOpacity key={icon} onPress={() => setNewGoalIcon(icon)} style={[styles.iconPickerItem, { backgroundColor: newGoalIcon === icon ? `${c.primary}20` : c.surfaceContainer, borderColor: newGoalIcon === icon ? c.primary : c.outlineVariant + '20' }]}>
+                  <Text style={{ fontSize: 18 }}>{goalIcons[icon]}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.modalCancelBtn, { borderColor: c.outlineVariant }]} onPress={() => setShowAddModal(false)}>
                 <Text style={[styles.modalCancelText, { color: c.onSurface }]}>{t.cancel}</Text>
@@ -199,4 +222,6 @@ const styles = StyleSheet.create({
   modalCancelText: { fontSize: 14, fontWeight: '600' },
   modalSaveBtn: { flex: 1, paddingVertical: 14, borderRadius: BorderRadius.full, alignItems: 'center' },
   modalSaveText: { fontSize: 14, fontWeight: '600' },
+  iconPickerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  iconPickerItem: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
 });
