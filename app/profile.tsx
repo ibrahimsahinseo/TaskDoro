@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, Dimensions, Modal, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -42,6 +42,17 @@ export default function ProfileScreen() {
   const dailyProgress = state.timer.todayPomodoros / state.timer.dailyTarget;
   const canClaimReward = dailyProgress >= 1 && !profile.dailyRewardClaimed;
 
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editName, setEditName] = useState(profile.name);
+  const [editTitle, setEditTitle] = useState(profile.title);
+
+  const handleSaveProfile = () => {
+    if (editName.trim()) {
+      dispatch({ type: 'UPDATE_PROFILE', payload: { name: editName.trim(), title: editTitle.trim() } });
+    }
+    setShowEditModal(false);
+  };
+
   const allAchievementIds = Object.keys(ACHIEVEMENT_DEFS);
   const unlockedSet = new Set(profile.achievements);
 
@@ -75,7 +86,7 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.profileActions}>
-            <TouchableOpacity style={[styles.editButton, { backgroundColor: c.surfaceContainerHigh }]} onPress={() => Alert.alert(t.editProfile)}>
+            <TouchableOpacity style={[styles.editButton, { backgroundColor: c.surfaceContainerHigh }]} onPress={() => { setEditName(profile.name); setEditTitle(profile.title); setShowEditModal(true); }}>
               <Text style={[styles.editButtonText, { color: c.onSurface }]}>✏ {t.editProfile}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.shareButton, { borderColor: c.outlineVariant }]} onPress={() => Alert.alert(t.share)}>
@@ -169,6 +180,32 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      <Modal visible={showEditModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: c.cardBg, borderColor: c.outlineVariant + '20' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: c.onSurface }]}>✏ {t.editProfile}</Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                <Text style={{ color: c.onSurfaceVariant, fontSize: 22 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.fieldLabel, { color: c.onSurfaceVariant }]}>Name</Text>
+            <TextInput style={[styles.modalInput, { backgroundColor: c.surfaceContainer, color: c.onSurface, borderColor: c.outlineVariant + '30' }]} value={editName} onChangeText={setEditName} placeholder="Your name" placeholderTextColor={c.onSurfaceVariant + '60'} />
+            <Text style={[styles.fieldLabel, { color: c.onSurfaceVariant }]}>Bio / Title</Text>
+            <TextInput style={[styles.modalInput, { backgroundColor: c.surfaceContainer, color: c.onSurface, borderColor: c.outlineVariant + '30', minHeight: 60 }]} value={editTitle} onChangeText={setEditTitle} placeholder="Software Engineer | Building tools for thought." placeholderTextColor={c.onSurfaceVariant + '60'} multiline />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: c.surfaceContainer }]} onPress={() => setShowEditModal(false)}>
+                <Text style={[styles.modalBtnText, { color: c.onSurfaceVariant }]}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: c.primary }]} onPress={handleSaveProfile}>
+                <Text style={[styles.modalBtnText, { color: '#FFF' }]}>{t.save}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -230,4 +267,13 @@ const styles = StyleSheet.create({
   accountIcon: { fontSize: 18 },
   accountLabel: { fontSize: 15, fontWeight: '500' },
   divider: { height: 1, marginVertical: 4 },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderWidth: 1 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: '700' },
+  fieldLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 8, marginTop: 12 },
+  modalInput: { borderRadius: 12, padding: 14, fontSize: 15, borderWidth: 1 },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  modalBtnText: { fontSize: 14, fontWeight: '700' },
 });
