@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, Dimensions } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, Dimensions, Modal, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
@@ -18,6 +18,12 @@ export default function ScheduleScreen() {
   const t = useTranslation();
   const [selectedDay, setSelectedDay] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState(0);
+  const [editBlock, setEditBlock] = useState<ScheduleBlock | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editType, setEditType] = useState<'focus' | 'shortBreak' | 'longBreak'>('focus');
+  const [editStart, setEditStart] = useState('');
+  const [editEnd, setEditEnd] = useState('');
 
   const TEMPLATES = [t.customRoutine, t.examPrep, t.codingSprint, t.deepReading];
   const WEEKDAYS = [
@@ -49,6 +55,21 @@ export default function ScheduleScreen() {
 
   const cycleTemplate = () => {
     setSelectedTemplate((selectedTemplate + 1) % TEMPLATES.length);
+  };
+
+  const openEditBlock = (block: ScheduleBlock) => {
+    setEditBlock(block);
+    setEditTitle(block.title);
+    setEditDesc(block.description);
+    setEditType(block.type);
+    setEditStart(block.startTime);
+    setEditEnd(block.endTime);
+  };
+
+  const handleSaveBlock = () => {
+    if (!editBlock) return;
+    dispatch({ type: 'UPDATE_SCHEDULE_BLOCK', payload: { id: editBlock.id, updates: { title: editTitle.trim(), description: editDesc.trim(), type: editType, startTime: editStart, endTime: editEnd } } });
+    setEditBlock(null);
   };
 
   return (
@@ -90,7 +111,8 @@ export default function ScheduleScreen() {
           </View>
 
           {dayBlocks.map((block, index) => (
-            <Animated.View key={block.id} entering={FadeInRight.delay(index * 100).springify()} style={[styles.blockCard, { borderColor: c.outlineVariant + '20' }, block.type === 'focus' ? { backgroundColor: c.cardBg } : { backgroundColor: c.surfaceContainerHigh, borderLeftWidth: 4, borderLeftColor: typeColors[block.type] }]}>
+            <Animated.View key={block.id} entering={FadeInRight.delay(index * 100).springify()}>
+            <TouchableOpacity onPress={() => openEditBlock(block)} activeOpacity={0.7} style={[styles.blockCard, { borderColor: c.outlineVariant + '20' }, block.type === 'focus' ? { backgroundColor: c.cardBg } : { backgroundColor: c.surfaceContainerHigh, borderLeftWidth: 4, borderLeftColor: typeColors[block.type] }]}>
               <View style={styles.dragHandle}><Text style={[styles.dragIcon, { color: `${c.onSurfaceVariant}40` }]}>⋮⋮</Text></View>
               <View style={styles.blockContent}>
                 <View style={styles.blockHeader}>
@@ -109,6 +131,7 @@ export default function ScheduleScreen() {
               <TouchableOpacity style={styles.deleteBlockBtn} onPress={() => handleDeleteBlock(block.id)}>
                 <Text style={[styles.deleteBlockIcon, { color: c.onSurfaceVariant }]}>✕</Text>
               </TouchableOpacity>
+            </TouchableOpacity>
             </Animated.View>
           ))}
 
@@ -127,6 +150,47 @@ export default function ScheduleScreen() {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
+
+      {/* Edit Block Modal */}
+      <Modal visible={!!editBlock} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: c.surfaceContainerLow }]}>
+            <Text style={[styles.modalTitle, { color: c.onSurface }]}>{t.edit} Block</Text>
+
+            <View style={styles.typeSelector}>
+              {(['focus', 'shortBreak', 'longBreak'] as const).map((tp) => (
+                <TouchableOpacity key={tp} onPress={() => setEditType(tp)} style={[styles.typeBtn, { backgroundColor: editType === tp ? `${typeColors[tp]}20` : c.surfaceContainer, borderColor: editType === tp ? typeColors[tp] : c.outlineVariant + '30' }]}>
+                  <Text style={{ fontSize: 12 }}>{typeIcons[tp]}</Text>
+                  <Text style={[styles.typeBtnText, { color: editType === tp ? typeColors[tp] : c.onSurfaceVariant }]}>{typeLabels[tp]}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput style={[styles.modalInput, { backgroundColor: c.surfaceContainer, color: c.onSurface, borderColor: c.outlineVariant + '30' }]} value={editTitle} onChangeText={setEditTitle} placeholder="Block title" placeholderTextColor={c.onSurfaceVariant + '60'} />
+            <TextInput style={[styles.modalInput, { backgroundColor: c.surfaceContainer, color: c.onSurface, borderColor: c.outlineVariant + '30' }]} value={editDesc} onChangeText={setEditDesc} placeholder="Description" placeholderTextColor={c.onSurfaceVariant + '60'} multiline />
+
+            <View style={styles.timeInputRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.timeLabel, { color: c.onSurfaceVariant }]}>{t.startTime || 'Start'}</Text>
+                <TextInput style={[styles.modalInput, { backgroundColor: c.surfaceContainer, color: c.onSurface, borderColor: c.outlineVariant + '30' }]} value={editStart} onChangeText={setEditStart} placeholder="09:00" placeholderTextColor={c.onSurfaceVariant + '60'} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.timeLabel, { color: c.onSurfaceVariant }]}>{t.endTime || 'End'}</Text>
+                <TextInput style={[styles.modalInput, { backgroundColor: c.surfaceContainer, color: c.onSurface, borderColor: c.outlineVariant + '30' }]} value={editEnd} onChangeText={setEditEnd} placeholder="10:30" placeholderTextColor={c.onSurfaceVariant + '60'} />
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalCancelBtn, { borderColor: c.outlineVariant }]} onPress={() => setEditBlock(null)}>
+                <Text style={[styles.modalCancelText, { color: c.onSurface }]}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalSaveBtn, { backgroundColor: c.primary }]} onPress={handleSaveBlock}>
+                <Text style={[styles.modalSaveText, { color: c.onPrimary }]}>{t.save}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -174,4 +238,18 @@ const styles = StyleSheet.create({
   resetButtonText: { fontSize: 12, fontWeight: '700', letterSpacing: 1 },
   saveButton: { paddingHorizontal: 24, paddingVertical: 14, borderRadius: BorderRadius.full },
   saveButtonText: { fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
+  modalTitle: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
+  typeSelector: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  typeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
+  typeBtnText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  modalInput: { borderRadius: 12, padding: 14, fontSize: 15, borderWidth: 1, marginBottom: 12 },
+  timeInputRow: { flexDirection: 'row', gap: 12 },
+  timeLabel: { fontSize: 11, fontWeight: '600', marginBottom: 6 },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  modalCancelBtn: { flex: 1, paddingVertical: 14, borderRadius: BorderRadius.full, borderWidth: 1, alignItems: 'center' },
+  modalCancelText: { fontSize: 14, fontWeight: '600' },
+  modalSaveBtn: { flex: 1, paddingVertical: 14, borderRadius: BorderRadius.full, alignItems: 'center' },
+  modalSaveText: { fontSize: 14, fontWeight: '600' },
 });
