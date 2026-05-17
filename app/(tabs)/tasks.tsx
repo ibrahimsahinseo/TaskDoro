@@ -30,6 +30,7 @@ export default function TasksScreen() {
 
   const [filter, setFilter] = useState<FilterType>('all');
   const [sort, setSort] = useState<SortType>('newest');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
@@ -50,6 +51,10 @@ export default function TasksScreen() {
 
   const filteredTasks = useMemo(() => {
     let tasks = [...state.tasks];
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      tasks = tasks.filter((t) => t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q) || (t.notes && t.notes.toLowerCase().includes(q)));
+    }
     if (filter === 'active') tasks = tasks.filter((t) => !t.completed);
     if (filter === 'completed') tasks = tasks.filter((t) => t.completed);
     if (sort === 'priority') {
@@ -59,7 +64,7 @@ export default function TasksScreen() {
       tasks.sort((a, b) => (a.dueDate || '9999') < (b.dueDate || '9999') ? -1 : 1);
     }
     return tasks;
-  }, [state.tasks, filter, sort]);
+  }, [state.tasks, filter, sort, searchQuery]);
 
   const taskCounts = useMemo(() => ({
     all: state.tasks.length,
@@ -187,6 +192,15 @@ export default function TasksScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Search */}
+      <View style={[styles.searchContainer, { backgroundColor: c.surfaceContainerLow, borderColor: c.outlineVariant + '20' }]}>
+        <Text style={{ fontSize: 14, marginRight: 8 }}>🔍</Text>
+        <TextInput style={[styles.searchInput, { color: c.onSurface }]} placeholder={t.addNewTask} placeholderTextColor={c.onSurfaceVariant + '60'} value={searchQuery} onChangeText={setSearchQuery} />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}><Text style={{ color: c.onSurfaceVariant }}>✕</Text></TouchableOpacity>
+        )}
+      </View>
+
       {/* Filters */}
       <View style={styles.filterRow}>
         {(['all', 'active', 'completed'] as FilterType[]).map((f) => (
@@ -305,6 +319,8 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 14, lineHeight: 20, marginTop: 2 },
   addBtn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: BorderRadius.full },
   addBtnText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', marginHorizontal: Spacing.safeMargin, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 10 },
+  searchInput: { flex: 1, fontSize: 14 },
   filterRow: { flexDirection: 'row', paddingHorizontal: Spacing.safeMargin, gap: 8, marginBottom: 8 },
   filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: BorderRadius.full, borderWidth: 1 },
   filterText: { fontSize: 12, fontWeight: '600' },

@@ -1,14 +1,27 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as Notifications from 'expo-notifications';
 import { AppProvider, useApp } from '../contexts/AppContext';
 import { getThemeColors } from '../constants/theme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 function AppContent() {
   const { state } = useApp();
   const c = getThemeColors(state.settings.darkTheme);
+
+  useEffect(() => {
+    (async () => {
+      if (Platform.OS !== 'web') {
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== 'granted') {
+          await Notifications.requestPermissionsAsync();
+        }
+      }
+    })();
+  }, []);
 
   return (
     <>
