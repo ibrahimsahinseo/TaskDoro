@@ -164,6 +164,43 @@ export default function StatsScreen() {
         </Animated.View>
       )}
 
+      {/* Lifetime Stats */}
+      <Animated.View entering={FadeInDown.duration(500).delay(350)} style={styles.lifetimeGrid}>
+        <View style={[styles.lifetimeCard, { backgroundColor: c.cardBg, borderColor: c.outlineVariant + '20' }]}>
+          <Text style={{ fontSize: 22, marginBottom: 6 }}>⏱</Text>
+          <Text style={[styles.lifetimeValue, { color: c.primary }]}>{Math.floor(state.profile.totalFocusMinutes / 60)}h</Text>
+          <Text style={[styles.lifetimeLabel, { color: c.onSurfaceVariant }]}>{t.totalFocus}</Text>
+        </View>
+        <View style={[styles.lifetimeCard, { backgroundColor: c.cardBg, borderColor: c.outlineVariant + '20' }]}>
+          <Text style={{ fontSize: 22, marginBottom: 6 }}>🔥</Text>
+          <Text style={[styles.lifetimeValue, { color: c.coral }]}>{state.profile.currentStreak}</Text>
+          <Text style={[styles.lifetimeLabel, { color: c.onSurfaceVariant }]}>{t.streak}</Text>
+        </View>
+        <View style={[styles.lifetimeCard, { backgroundColor: c.cardBg, borderColor: c.outlineVariant + '20' }]}>
+          <Text style={{ fontSize: 22, marginBottom: 6 }}>📊</Text>
+          <Text style={[styles.lifetimeValue, { color: c.tertiary }]}>{state.profile.totalSessions}</Text>
+          <Text style={[styles.lifetimeLabel, { color: c.onSurfaceVariant }]}>SESSIONS</Text>
+        </View>
+        <View style={[styles.lifetimeCard, { backgroundColor: c.cardBg, borderColor: c.outlineVariant + '20' }]}>
+          <Text style={{ fontSize: 22, marginBottom: 6 }}>✅</Text>
+          <Text style={[styles.lifetimeValue, { color: c.mint }]}>{state.profile.totalTasksCompleted}</Text>
+          <Text style={[styles.lifetimeLabel, { color: c.onSurfaceVariant }]}>{t.completedTasks}</Text>
+        </View>
+      </Animated.View>
+
+      {/* Weekly Total */}
+      <Animated.View entering={FadeInDown.duration(500).delay(370)} style={[styles.sectionCard, { backgroundColor: c.cardBg, borderColor: c.outlineVariant + '20' }]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <Text style={[styles.sectionTitle, { color: c.onSurface }]}>{t.weeklyFocus}</Text>
+            <Text style={[styles.sectionSubtitle, { color: c.onSurfaceVariant }]}>{Math.round(weeklyData.reduce((a, b) => a + b, 0))} {t.min} {t.completed?.toLowerCase() || 'total'}</Text>
+          </View>
+          <View style={[{ backgroundColor: `${c.primary}15`, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 }]}>
+            <Text style={[{ color: c.primary, fontSize: 13, fontWeight: '700' }]}>Lv.{state.profile.level}</Text>
+          </View>
+        </View>
+      </Animated.View>
+
       {/* Session History */}
       <Animated.View entering={FadeInDown.duration(500).delay(400)} style={[styles.sectionCard, { backgroundColor: c.cardBg, borderColor: c.outlineVariant + '20' }]}>
         <Text style={[styles.sectionTitle, { color: c.onSurface }]}>{t.sessionHistory}</Text>
@@ -233,4 +270,8 @@ const styles = StyleSheet.create({
   sessionMeta: { fontSize: 11, marginTop: 2 },
   sessionTagBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   sessionTagText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  lifetimeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: Spacing.md },
+  lifetimeCard: { flex: 1, minWidth: (SCREEN_WIDTH - 50) / 2 - 10, alignItems: 'center', borderRadius: BorderRadius.lg, padding: 16, borderWidth: 1 },
+  lifetimeValue: { fontSize: 24, fontWeight: '700', fontFamily: 'monospace', letterSpacing: -1 },
+  lifetimeLabel: { fontSize: 9, fontWeight: '600', letterSpacing: 1, marginTop: 4, textTransform: 'uppercase' },
 });
