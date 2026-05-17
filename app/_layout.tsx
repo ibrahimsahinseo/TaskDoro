@@ -4,6 +4,7 @@ import { AppProvider, useApp } from '../contexts/AppContext';
 import { getThemeColors } from '../constants/theme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 function AppContent() {
   const { state } = useApp();
@@ -32,9 +33,11 @@ function AppContent() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
+      <ErrorBoundary>
+        <AppProvider>
+          <AppContent />
+        </AppProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }
